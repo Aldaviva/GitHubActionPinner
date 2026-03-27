@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "fasterflect": {
+        "type": "Direct",
+        "requested": "[3.0.0, )",
+        "resolved": "3.0.0",
+        "contentHash": "nXucxx84mYH+fS9U92a4Ak/MfWP0H204c8D2I64zsOQynnihhavO6HOCUcpp8HfKZMn3aNn01iv1bINnxH7Kow=="
+      },
+      "McMaster.Extensions.CommandLineUtils": {
+        "type": "Direct",
+        "requested": "[5.0.1, )",
+        "resolved": "5.0.1",
+        "contentHash": "dXerCHdnTrlpoQjdpxBISv9OIqqziJph1bKOTK95nPG0m7yDyMyVmQDcE1Z10ZZlQeaod1C8zewOW+MQOgPWhw=="
+      },
+      "Octokit": {
+        "type": "Direct",
+        "requested": "[14.0.0, )",
+        "resolved": "14.0.0",
+        "contentHash": "jGOuTH1l+TCpJH+fwYOp7USzHDuGfN1jKbLz3J2COwyn+wL08eynvpnM6rY2qkzIEXum3PN2p2QkP3BW/p9Qcw=="
+      },
+      "Unfucked": {
+        "type": "Direct",
+        "requested": "[0.0.1-beta.34, )",
+        "resolved": "0.0.1-beta.34",
+        "contentHash": "arwav9Lt8kbWJxEQXcgQE6ntX0XYxbmcVapVH5mEKbEgBkxR9TwWODgbbR4q7aVNmqdvI8YKQZLGsBvipk8PJw=="
+      },
+      "Unfucked.Caching": {
+        "type": "Direct",
+        "requested": "[0.0.1-beta.3, )",
+        "resolved": "0.0.1-beta.3",
+        "contentHash": "TRHrSn79hGh/EBHiciUU/uXj5UBqo2CTaiwFfQqomDj6ak3VdkVkZzHyF7WAk7xkLBRIIP7NciLoftP6RsFnBw=="
+      }
+    },
+    "net10.0/linux-arm": {},
+    "net10.0/linux-arm64": {},
+    "net10.0/linux-x64": {},
+    "net10.0/osx-arm64": {},
+    "net10.0/osx-x64": {},
+    "net10.0/win-arm64": {},
+    "net10.0/win-x64": {}
+  }
+}
