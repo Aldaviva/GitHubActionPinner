@@ -2,42 +2,62 @@ using GitHubActionPinner;
 using GitHubActionPinner.GitHub.Data;
 using McMaster.Extensions.CommandLineUtils;
 using Octokit;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Unfucked;
 using Unfucked.Caching;
 using static Unfucked.ConsoleControl;
 
-Assembly          assembly          = Assembly.GetEntryAssembly()!;
-CancellationToken cancellationToken = new CancellationTokenSource().CancelOnCtrlC().Token;
+Assembly assembly = Assembly.GetEntryAssembly()!;
 
-try {
-    using CommandLineApplication argumentParser = new() {
-        Description = "Set all owned GitHub repository actions permissions to whitelist third-party actions by immutable SHA-1 commit hashes, instead of by mutable tags, for improved security.",
-        UnrecognizedArgumentHandling = UnrecognizedArgumentHandling.Throw
-    };
-    argumentParser.Conventions.UseDefaultConventions();
-    argumentParser.VersionOptionFromAssemblyAttributes(assembly);
+using CancellationTokenSource cts = new CancellationTokenSource().CancelOnCtrlC();
 
-    CommandOption<string> gitHubAccessToken = argumentParser.Option<string>("--github-access-token",
-        "Token with repository administration write access your repositories", CommandOptionType.SingleValue).IsRequired();
-    CommandOption<bool> isDryRun = argumentParser.Option<bool>("-n|--dry-run", "Don't actually make any changes", CommandOptionType.NoValue);
-    argumentParser.Parse(args);
-    if (argumentParser.IsShowingInformation) return 0;
+using CommandLineApplication argumentParser = new() {
+    Description = "Set all owned GitHub repository actions permissions to whitelist third-party actions by immutable SHA-1 commit hashes, instead of by mutable tags, for improved security.",
+    UnrecognizedArgumentHandling = UnrecognizedArgumentHandling.Throw
+};
+argumentParser.Conventions.UseDefaultConventions();
+argumentParser.VersionOptionFromAssemblyAttributes("-v|--version", assembly);
 
-    GitHubClient gitHubClient = new(new ProductHeaderValue(assembly.GetName().Name!, assembly.GetName().Version!.ToString(3))) { Credentials = new Credentials(gitHubAccessToken.ParsedValue) };
+GitHubClient gitHubClient = null!;
 
-    using Cache<string, IDictionary<string, string>> repoTagToCommitCache = new InMemoryCache<string, IDictionary<string, string>>(loader: async repoFullName => {
+CommandOption<bool> isDryRun = argumentParser.Option<bool>("-n|--dry-run", "Don't actually make any changes", CommandOptionType.NoValue);
+CommandOption<string> gitHubAccessToken = argumentParser.Option<string>("-t|--github-access-token",
+    "Token with repository administration write access your repositories", CommandOptionType.SingleValue).IsRequired();
+gitHubAccessToken.OnValidate(validation => {
+    gitHubClient = new GitHubClient(new ProductHeaderValue(assembly.GetName().Name!, assembly.GetName().Version!.ToString(3)))
+        { Credentials = new Credentials(((CommandOption<string>) validation.ObjectInstance).ParsedValue) };
+    return ValidationResult.Success!;
+});
+
+argumentParser.OnExecute(() => {
+    argumentParser.ShowHelp();
+    return 1;
+});
+
+argumentParser.Command("pin-actions", command => {
+    command.Description = "Convert allowed Actions whitelisted by tag to use commit hashes instead.";
+    command.OnExecuteAsync(pinActions);
+});
+
+argumentParser.Command("permit-pull-requests", command => {
+    var permissionArg = command.Argument<PullRequestCreationPolicy>("policy",
+        "Which users are allowed to open pull requests in the repository.").IsRequired();
+
+    command.Description = "Set whether all users can open pull requests on all your repositories, or if they have to be collaborators.";
+    command.OnExecuteAsync(ct => permitPullRequests(permissionArg.ParsedValue, ct));
+});
+
+async Task<int> pinActions(CancellationToken ct) {
+    using InMemoryCache<string, IDictionary<string, string>> repoTagToCommitCache = new(loader: async (repoFullName, _) => {
         string[]                     ownerAndRepo = repoFullName.Split('/', 2);
         IReadOnlyList<RepositoryTag> allTags      = await gitHubClient.Repository.GetAllTags(ownerAndRepo[0], ownerAndRepo[1]);
         return allTags.ToDictionary(tag => tag.Name, tag => tag.Commit.Sha, StringComparer.OrdinalIgnoreCase);
     });
 
-    IEnumerable<Repository> allUserRepositories = (await gitHubClient.Repository.GetAllForCurrent(new RepositoryRequest { Type = RepositoryType.Owner }, new ApiOptions { PageSize = 100 }))
-        .Where(repo => !repo.Archived);
-
-    foreach (Repository repo in allUserRepositories) {
-        cancellationToken.ThrowIfCancellationRequested();
+    foreach (Repository repo in await listUserRepositories()) {
+        ct.ThrowIfCancellationRequested();
         ActionsPermissions permissions = await gitHubClient.Actions.PermissionsUnfucked.Get(repo.Owner.Login, repo.Name);
         if (!permissions.Enabled) continue;
 
@@ -68,7 +88,7 @@ try {
                     Console.WriteLine(
                         $"  {match.Groups["owner"].Value}/{match.Groups["repo"].Value}@{commitOrTag}: {Color(isPinned ? "pinned" : "unpinned", isPinned ? ConsoleColor.Green : ConsoleColor.Red)}");
                     string ownerAndRepo = match.Groups["ownerAndRepo"].Value;
-                    if (!isPinned && (await repoTagToCommitCache.Get(ownerAndRepo)).GetValueOrNull(commitOrTag) is {} commitForTag) {
+                    if (!isPinned && (await repoTagToCommitCache.Get(ownerAndRepo, cancellationToken: ct)).GetValueOrNull(commitOrTag) is {} commitForTag) {
                         selectedActions.PatternsAllowed[index] = $"{ownerAndRepo}@{commitForTag}";
                         changed                                = true;
                     }
@@ -76,7 +96,7 @@ try {
 
                 if (changed) {
                     if (!isDryRun.ParsedValue) {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        ct.ThrowIfCancellationRequested();
                         await gitHubClient.Actions.PermissionsUnfucked.SetSelectedActions(repo.Owner.Login, repo.Name, selectedActions);
                     }
                     WriteLine($"{(isDryRun.ParsedValue ? "Would have set" : "Set")} {repo.FullName} allowed actions to {selectedActions.PatternsAllowed.Join(", ")}", ConsoleColor.Magenta);
@@ -84,10 +104,30 @@ try {
                 break;
         }
     }
+    return 0;
+}
+
+async Task<int> permitPullRequests(PullRequestCreationPolicy policy, CancellationToken ct) {
+    foreach (Repository repo in await listUserRepositories()) {
+        if (!isDryRun.ParsedValue) {
+            ct.ThrowIfCancellationRequested();
+            await gitHubClient.Repository.Edit(repo.Id, new UnfuckedRepositoryUpdate { PullRequestCreationPolicy = policy });
+        }
+        WriteLine($"{(isDryRun.ParsedValue ? "Would have set" : "Set")} {repo.FullName} pull requests creation policy to {policy}", ConsoleColor.Magenta);
+    }
+    return 0;
+}
+
+// Iterates over all pages
+async Task<IEnumerable<Repository>> listUserRepositories() =>
+    (await gitHubClient.Repository.GetAllForCurrent(new RepositoryRequest { Type = RepositoryType.Owner }, new ApiOptions { PageSize = 100 }))
+    .Where(repo => !repo.Archived);
+
+try {
+    return await argumentParser.ExecuteAsync(args, cts.Token);
 } catch (OperationCanceledException) {
     return 1;
 }
-return 0;
 
 internal static partial class Program {
 

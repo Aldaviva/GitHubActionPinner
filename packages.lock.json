@@ -10,9 +10,9 @@
       },
       "McMaster.Extensions.CommandLineUtils": {
         "type": "Direct",
-        "requested": "[5.0.1, )",
-        "resolved": "5.0.1",
-        "contentHash": "dXerCHdnTrlpoQjdpxBISv9OIqqziJph1bKOTK95nPG0m7yDyMyVmQDcE1Z10ZZlQeaod1C8zewOW+MQOgPWhw=="
+        "requested": "[5.1.0, )",
+        "resolved": "5.1.0",
+        "contentHash": "YceiKmxdsBrlkAJpmJ2N8XkLyAH01xLsm4VLfjNp5MvtAom2wflZtEBz3CLMQret6Z7jSh3oBO1ULF1Is0tNxA=="
       },
       "Octokit": {
         "type": "Direct",
@@ -22,15 +22,15 @@
       },
       "Unfucked": {
         "type": "Direct",
-        "requested": "[0.0.1-beta.34, )",
-        "resolved": "0.0.1-beta.34",
-        "contentHash": "arwav9Lt8kbWJxEQXcgQE6ntX0XYxbmcVapVH5mEKbEgBkxR9TwWODgbbR4q7aVNmqdvI8YKQZLGsBvipk8PJw=="
+        "requested": "[0.0.1-beta.53, )",
+        "resolved": "0.0.1-beta.53",
+        "contentHash": "cn/CRmctaDM/gbQhynqxYF0NX0L7fV0dw5TvcqAGhjhB9hNAHw7joP1h/qV+hhl1b1TC0UkfS8JcaysQpBj+VA=="
       },
       "Unfucked.Caching": {
         "type": "Direct",
-        "requested": "[0.0.1-beta.3, )",
-        "resolved": "0.0.1-beta.3",
-        "contentHash": "TRHrSn79hGh/EBHiciUU/uXj5UBqo2CTaiwFfQqomDj6ak3VdkVkZzHyF7WAk7xkLBRIIP7NciLoftP6RsFnBw=="
+        "requested": "[0.0.1-beta.6, )",
+        "resolved": "0.0.1-beta.6",
+        "contentHash": "sM29d8zoe+O0Vv6Q5JJmnRgL0u50xJ34zjkZdLB8rayKAo/pFn7xuLHV3hzMHR52BqVQT/GVGGgkp4Xv0cIpOw=="
       }
     },
     "net10.0/linux-arm": {},
